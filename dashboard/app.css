@@ -137,3 +137,25 @@ tbody tr[data-selected="true"] { background: color-mix(in srgb, var(--accent) 8%
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* radar-2 additions: status and evidence badges, the comparable band, and the view tabs. */
+.badgeline { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.badge {
+  display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; line-height: 1.6; white-space: nowrap;
+  background: color-mix(in srgb, var(--border) 55%, var(--surface)); color: var(--muted);
+}
+.badge.cat { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
+.badge.watch { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent); }
+.badge.ok { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+.badge.mid { background: color-mix(in srgb, #c9a227 16%, var(--surface)); color: #7a5d0c; }
+.badge.warn { background: color-mix(in srgb, var(--negative) 12%, var(--surface)); color: var(--negative); }
+.badge.dim { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.tabsbar { display: flex; gap: var(--step-1); margin: var(--step-4) 0 var(--step-3); padding: 3px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); width: fit-content; }
+.tabsbar button { min-height: 32px; padding: 0 var(--step-4); border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.tabsbar button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.bandcell { display: grid; gap: 4px; min-width: 180px; }
+.band { position: relative; width: 100%; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--border) 55%, var(--surface)); }
+.band i { position: absolute; top: 0; height: 100%; }
+.band .band-range { border-radius: 5px; background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
+.band .band-mark { width: 2px; border-radius: 1px; background: var(--accent); }
