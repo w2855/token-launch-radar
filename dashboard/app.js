@@ -386,6 +386,88 @@
     );
   }
 
+  // The group overview: what each valuation group holds on the board, aggregated from the rows the
+  // snapshot's own comparables priced. Every figure is summed from the rows, never hard-coded.
+  function groupsPanel() {
+    var byGroup = {};
+    DATA.rows.forEach(function (r) {
+      var g = r.comparable.group;
+      if (!byGroup[g]) byGroup[g] = { count: 0, tvl: 0, implied: 0, top: [] };
+      var b = byGroup[g];
+      b.count += 1;
+      b.tvl += r.tvl_usd;
+      b.implied += r.implied_value_usd;
+      b.top.push(r);
+    });
+    var stats = DATA.comparables.groups.slice().sort(function (a, b) { return b.n - a.n; });
+    var cards = stats.map(function (g) {
+      var b = byGroup[g.group] || { count: 0, tvl: 0, implied: 0, top: [] };
+      b.top.sort(function (x, y) { return y.tvl_usd - x.tvl_usd; });
+      var best = b.top.slice(0, 3).map(function (r) { return r.name; }).join(', ');
+      return el('div', { class: 'groupcard' },
+        el('div', { class: 'groupcard-head' },
+          el('b', { text: g.group }),
+          el('span', { class: 'badge ' + (g.used ? 'ok' : 'dim'), text: g.used ? 'own median ' + fmtMult(g.median) : 'global ' + fmtMult(DATA.comparables.global.median) })
+        ),
+        el('div', { class: 'groupcard-grid' },
+          el('span', { text: 'Rows on board' }), el('b', { class: 'num', text: String(b.count) }),
+          el('span', { text: 'TVL held' }), el('b', { class: 'num', text: fmtUsd(b.tvl) }),
+          el('span', { text: 'Implied, summed' }), el('b', { class: 'num', text: fmtUsd(b.implied) }),
+          el('span', { text: 'Live-token comparables' }), el('b', { class: 'num', text: String(g.n) })
+        ),
+        b.count > 0 ? el('p', { class: 'sub', text: 'Biggest on the board: ' + best + '.' }) : el('p', { class: 'sub', text: 'No pre-token protocol of this group made the board.' })
+      );
+    });
+    return el('section', { class: 'panel groups' },
+      el('h2', { text: 'The board by valuation group' }),
+      el('p', { class: 'sub', text: 'What each comparable group holds: the pre-token rows it priced, the TVL they carry, the implied value summed over them, and the live-token protocols the median came from. A group that fell back to the global median says so on its card.' }),
+      el('div', { class: 'groupgrid' }, cards)
+    );
+  }
+
+  // The chain spread of the board: where the pre-token capital sits, from the rows' own chain lists.
+  function chainPanel() {
+    var byChain = {};
+    DATA.rows.forEach(function (r) {
+      (r.chains || []).forEach(function (c) {
+        if (!byChain[c]) byChain[c] = { count: 0, tvl: 0 };
+        byChain[c].count += 1;
+        byChain[c].tvl += r.tvl_usd / Math.max(1, (r.chains || []).length);
+      });
+    });
+    var chains = Object.keys(byChain).map(function (c) { return { chain: c, count: byChain[c].count, tvl: byChain[c].tvl }; })
+      .sort(function (a, b) { return b.tvl - a.tvl; }).slice(0, 12);
+    var max = chains.length > 0 ? chains[0].tvl : 1;
+    var tbody = el('tbody');
+    chains.forEach(function (c) {
+      tbody.appendChild(el('tr', null,
+        el('td', null, el('b', { text: c.chain })),
+        el('td', { class: 'num', text: String(c.count) }),
+        el('td', null, el('div', { class: 'bar', 'aria-hidden': 'true' }, el('i', { style: 'width:' + Math.max(3, Math.round((c.tvl / max) * 100)) + '%' }))),
+        el('td', { class: 'num', text: fmtUsd(c.tvl) })
+      ));
+    });
+    return el('section', { class: 'panel chains' },
+      el('h2', { text: 'Where the pre-token capital sits' }),
+      el('p', { class: 'sub', text: 'The board\'s TVL spread over the chains the protocols name, a protocol shared over several chains counted once per chain in equal parts. The first twelve chains by that share are shown.' }),
+      el('div', { class: 'table-wrap' }, el('table', null,
+        el('thead', null, el('tr', null, el('th', { scope: 'col', text: 'Chain' }), el('th', { scope: 'col', text: 'Rows' }), el('th', { scope: 'col', text: 'Share of TVL' }), el('th', { scope: 'col', text: 'TVL (split share)' }))),
+        tbody
+      ))
+    );
+  }
+
+  // A CSV of the whole board, built in the page from the same data.js: no network, one download.
+  function csvUrl() {
+    var head = ['rank', 'slug', 'name', 'category', 'chains', 'tvl_usd', 'change_7d', 'age_days', 'implied_value_usd', 'band_low_usd', 'band_high_usd', 'comparable_group', 'comparable_n', 'comparable_median', 'confidence', 'farm_priority'];
+    var lines = [head.join(',')];
+    DATA.rows.forEach(function (r) {
+      var cells = [r.rank, r.slug, '"' + r.name.replace(/"/g, '""') + '"', r.category || '', '"' + (r.chains || []).join(' ') + '"', r.tvl_usd, r.change_7d === null ? '' : r.change_7d, r.age_days === null ? '' : r.age_days, r.implied_value_usd, r.band.low_value_usd, r.band.high_value_usd, r.comparable.group, r.comparable.n, r.comparable.median, r.confidence, r.farm_priority];
+      lines.push(cells.join(','));
+    });
+    return URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+  }
+
   function modelPanel() {
     var m = DATA.model;
     return el('section', { class: 'panel model' },
@@ -394,7 +476,16 @@
       el('div', { class: 'formula' },
         'implied = max(1, round( tvl_usd x comparable_median x (1 + clamp(change_7d, ' + m.momentum_floor + ', ' + m.momentum_cap + ') / 100 x ' + m.momentum_weight + ') ))'
       ),
-      el('p', { class: 'sub', text: 'The comparable_median is the ' + DATA.model_version + ' change from a flat multiple: instead of one number for every protocol, each valuation group is priced by the live-token protocols already in it — ' + DATA.comparables.global.n + ' of them across the snapshot — and a group too thin or too scattered falls back to the global median of ' + fmtMult(DATA.comparables.global.median) + ', with the row\'s confidence label reporting what backed it. The band is the same TVL priced at the group\'s 25th and 75th percentile. Farm priority orders effort, not a launch prediction.' })
+      el('p', { class: 'sub', text: 'The comparable_median is the ' + DATA.model_version + ' change from a flat multiple: instead of one number for every protocol, each valuation group is priced by the live-token protocols already in it — ' + DATA.comparables.global.n + ' of them across the snapshot — and a group too thin or too scattered falls back to the global median of ' + fmtMult(DATA.comparables.global.median) + ', with the row\'s confidence label reporting what backed it. The band is the same TVL priced at the group\'s 25th and 75th percentile. Farm priority orders effort, not a launch prediction.' }),
+      el('div', { class: 'exportrow' },
+        el('button', { class: 'button', type: 'button', text: 'Download the board as CSV', onclick: function () {
+          var a = el('a', { href: csvUrl(), download: 'token-radar-board.csv' });
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } }),
+        el('span', { class: 'sub', text: DATA.board_size + ' rows, the band, the comparable and the priority included.' })
+      )
     );
   }
 
@@ -477,7 +568,12 @@
       el('button', { type: 'button', 'aria-pressed': state.tab === 'live' ? 'true' : 'false', text: 'Live tokens (' + DATA.live_size + ')', onclick: function () { state.tab = 'live'; render(); } })
     ));
     shell.appendChild(state.tab === 'pre-token' ? boardTable() : liveTable());
-    if (state.tab === 'pre-token') { shell.appendChild(modelPanel()); shell.appendChild(groupTable()); }
+    if (state.tab === 'pre-token') {
+      shell.appendChild(groupsPanel());
+      shell.appendChild(modelPanel());
+      shell.appendChild(groupTable());
+      shell.appendChild(chainPanel());
+    }
     app.appendChild(shell);
     app.setAttribute('aria-busy', 'false');
     if (!dialog.isConnected) app.appendChild(dialog);

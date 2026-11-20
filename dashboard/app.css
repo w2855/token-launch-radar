@@ -159,3 +159,13 @@ tbody tr[data-selected="true"] { background: color-mix(in srgb, var(--accent) 8%
 .band i { position: absolute; top: 0; height: 100%; }
 .band .band-range { border-radius: 5px; background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
 .band .band-mark { width: 2px; border-radius: 1px; background: var(--accent); }
+
+/* The group overview, the chain spread, and the CSV export row. */
+.groups, .chains { margin-top: var(--step-4); padding: var(--step-5); display: grid; gap: var(--step-3); }
+.groupgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--step-3); }
+.groupcard { border: 1px solid var(--border); border-radius: var(--radius-control); padding: var(--step-3); display: grid; gap: var(--step-2); background: var(--surface); }
+.groupcard-head { display: flex; align-items: center; justify-content: space-between; gap: var(--step-2); }
+.groupcard-grid { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--step-3); font-size: 13px; }
+.groupcard-grid span { color: var(--muted); }
+.groupcard-grid b { font-family: var(--font-num); font-weight: 500; text-align: right; }
+.exportrow { display: flex; align-items: center; gap: var(--step-3); flex-wrap: wrap; }
