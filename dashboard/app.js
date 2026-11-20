@@ -296,11 +296,12 @@
       var prioText = { first: 'farm first', strong: 'strong', watch: 'watch' }[r.farm_priority] || '';
       var tr = el('tr', {
         'data-selected': state.selected === r.slug ? 'true' : 'false',
+        'data-top': r.rank <= 3 ? 'true' : 'false',
         tabindex: '0',
         onclick: function () { openDetail(r.slug); },
         onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(r.slug); } }
       },
-        el('td', { class: 'num', text: String(r.rank) }),
+        el('td', { class: 'num' }, el('span', { class: 'rankchip' + (r.rank <= 3 ? ' podiumed' : ''), text: String(r.rank) })),
         el('td', null, el('div', { class: 'name' },
           el('b', { text: r.name }),
           el('span', { class: 'badgeline' },
@@ -388,6 +389,29 @@
 
   // The group overview: what each valuation group holds on the board, aggregated from the rows the
   // snapshot's own comparables priced. Every figure is summed from the rows, never hard-coded.
+  // The podium: the board's three strongest claims, the first thing a reader sees. Every figure is
+  // read straight off the board's own rows, never restated by hand.
+  function podiumPanel() {
+    var top = DATA.rows.slice(0, 3);
+    var sumImplied = DATA.rows.reduce(function (a, r) { return a + r.implied_value_usd; }, 0);
+    return el('section', { class: 'podium' },
+      el('div', { class: 'podium-sum' },
+        el('span', { class: 'sub', text: 'Implied value across all ' + DATA.board_size + ' pre-token rows' }),
+        el('b', { class: 'num', text: fmtUsd(sumImplied) })
+      ),
+      el('div', { class: 'podium-grid' }, top.map(function (r) {
+        return el('button', { class: 'podiumcard', type: 'button', onclick: function () { openDetail(r.slug); } },
+          el('span', { class: 'podium-rank', text: '#' + r.rank }),
+          el('b', { class: 'podium-name', text: r.name }),
+          el('span', { class: 'sub', text: (r.category || 'Other') + ' · ' + fmtUsd(r.tvl_usd) + ' TVL' }),
+          el('b', { class: 'podium-value num', text: fmtUsd(r.implied_value_usd) }),
+          el('span', { class: 'sub', text: 'band ' + fmtUsd(r.band.low_value_usd) + ' – ' + fmtUsd(r.band.high_value_usd) }),
+          el('span', { class: 'badge ' + (r.confidence === 'high' ? 'ok' : r.confidence === 'medium' ? 'mid' : 'warn'), text: r.confidence + ' confidence' })
+        );
+      }))
+    );
+  }
+
   function groupsPanel() {
     var byGroup = {};
     DATA.rows.forEach(function (r) {
@@ -562,6 +586,7 @@
     var shell = el('div', { class: 'shell' });
     shell.appendChild(header());
     shell.appendChild(lede());
+    shell.appendChild(podiumPanel());
     shell.appendChild(controls());
     shell.appendChild(el('div', { class: 'tabsbar' },
       el('button', { type: 'button', 'aria-pressed': state.tab === 'pre-token' ? 'true' : 'false', text: 'Pre-token board', onclick: function () { state.tab = 'pre-token'; render(); } }),
